@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 type Cotation struct {
@@ -13,7 +15,15 @@ type Cotation struct {
 }
 
 func main() {
-	resp, err := http.Get("http://localhost:8080")
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8080", nil)
+	if err != nil {
+		log.Fatalf("Error when creating the request %v\n", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Fatalf("Error when making the request %v\n", err)
 	}
