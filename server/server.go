@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 )
@@ -25,17 +26,22 @@ type Cotation struct {
 }
 
 func main() {
+	http.HandleFunc("/", handler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
 	req, err := http.Get("https://economia.awesomeapi.com.br/json/last/USD-BRL")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when making the request %v\n", err)
 	}
 
+	defer req.Body.Close()
+
 	res, err := io.ReadAll(req.Body)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error in read this cotation %v\n", err)
 	}
-
-	defer req.Body.Close()
 
 	var data Cotation
 	err = json.Unmarshal(res, &data)
@@ -43,5 +49,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error in unmarshal this cotation: %v\n", err)
 	}
 
-	fmt.Println("Cotação do Dólar: ", data.Usdbrl)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data.Usdbrl)
 }
