@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
+	"time"
 )
 
 type Cotation struct {
@@ -26,27 +26,55 @@ type Cotation struct {
 }
 
 func main() {
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/cotacao", handler)
+	log.Println("Server is starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	req, err := http.Get("https://economia.awesomeapi.com.br/json/last/USD-BRL")
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://economia.awesomeapi.com.br/json/last/USD-BRL", nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when making the request %v\n", err)
+		http.Error(w, "Error creating request", http.StatusInternalServerError)
+		log.Printf("Error creating request: %v\n", err)
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			http.Error(w, "Request timed out: ", http.StatusRequestTimeout)
+			log.Printf(" Request timed out: %v\n", err)
+		} else {
+			http.Error(w, "Error reading response", http.StatusInternalServerError)
+			log.Printf("Error reading response: %v\n", err)
+		}
+		return
 	}
 
 	defer req.Body.Close()
 
-	res, err := io.ReadAll(req.Body)
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, "Error from external API", resp.StatusCode)
+		log.Printf("Error from external API: %v\n", resp.Status)
+		return
+	}
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error in read this cotation %v\n", err)
+		http.Error(w, "Error reading response body", http.StatusInternalServerError)
+		log.Printf("Error reading response body: %v\n", err)
+		return
 	}
 
 	var data Cotation
-	err = json.Unmarshal(res, &data)
+	err = json.Unmarshal(body, &data)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error in unmarshal this cotation: %v\n", err)
+		http.Error(w, "Error unmarshalling response body", http.StatusInternalServerError)
+		log.Printf("Error unmarshalling response body: %v\n", err)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
