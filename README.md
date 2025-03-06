@@ -10,7 +10,7 @@ Você precisará nos entregar dois sistemas em Go:
 - [X] O `client.go` deverá realizar uma requisição HTTP no `server.go` solicitando a cotação do dólar.
 - [X] O `client.go` precisará receber do `server.go` apenas o valor atual do câmbio (campo "bid" do JSON). Utilizando o package **"context"**, 
   - [X] o `client.go` terá um timeout máximo de 300ms para receber o resultado do `server.go`.
-- [] Usando o package **"context"**, o `server.go` deverá registrar no banco de dados **SQLite** cada cotação recebida, sendo que:
+- [X] Usando o package **"context"**, o `server.go` deverá registrar no banco de dados **SQLite** cada cotação recebida, sendo que:
   - [X] o timeout máximo para chamar a API de cotação do dólar deverá ser de 200ms e;
   - [] o timeout máximo para conseguir persistir os dados no banco deverá ser de 10ms.
 - [] Os 3 contextos _deverão retornar erro nos logs_ caso o tempo de execução seja insuficiente.

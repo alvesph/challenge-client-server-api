@@ -7,33 +7,53 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type Cotation struct {
-	Usdbrl struct {
-		Code       string `json:"code"`
-		Codein     string `json:"codein"`
-		Name       string `json:"name"`
-		High       string `json:"high"`
-		Low        string `json:"low"`
-		VarBid     string `json:"varBid"`
-		PctChange  string `json:"pctChange"`
-		Bid        string `json:"bid"`
-		Ask        string `json:"ask"`
-		Timestamp  string `json:"timestamp"`
-		CreateDate string `json:"create_date"`
-	} `json:"USDBRL"`
+	Code      string `json:"code"`
+	Codein    string `json:"codein"`
+	Name      string `json:"name"`
+	High      string `json:"high"`
+	Low       string `json:"low"`
+	VarBid    string `json:"varBid"`
+	PctChange string `json:"pctChange"`
+	Bid       string `json:"bid"`
+	Ask       string `json:"ask"`
+	gorm.Model
 }
 
+var db *gorm.DB
+
 func main() {
+	initDatabase()
 	http.HandleFunc("/cotacao", handler)
 	log.Println("Server is starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
+func initDatabase() {
+	var err error
+	db, err = gorm.Open(sqlite.Open("./data/cotacao.db"), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Error opening database: %v\n", err)
+	}
+	db.AutoMigrate(&Cotation{})
+}
+
+func saveToDatabase(cotation Cotation) {
+	if err := db.Create(&cotation).Error; err != nil {
+		log.Printf("Error saving to database: %v\n", err)
+	}
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
+
+	start := time.Now()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://economia.awesomeapi.com.br/json/last/USD-BRL", nil)
 	if err != nil {
@@ -45,16 +65,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			http.Error(w, "Request timed out: ", http.StatusRequestTimeout)
-			log.Printf(" Request timed out: %v\n", err)
+			http.Error(w, "Request server timed out", http.StatusRequestTimeout)
+			log.Printf("Request timed out: %v\n", err)
 		} else {
 			http.Error(w, "Error reading response", http.StatusInternalServerError)
 			log.Printf("Error reading response: %v\n", err)
 		}
 		return
 	}
-
-	defer req.Body.Close()
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		http.Error(w, "Error from external API", resp.StatusCode)
@@ -69,13 +88,21 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var data Cotation
+	var data struct {
+		Usdbrl Cotation `json:"USDBRL"`
+	}
+
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		http.Error(w, "Error unmarshalling response body", http.StatusInternalServerError)
 		log.Printf("Error unmarshalling response body: %v\n", err)
 		return
 	}
+
+	saveToDatabase(data.Usdbrl)
+
+	duration := time.Since(start)
+	log.Printf("Request took %v\n", duration)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data.Usdbrl)

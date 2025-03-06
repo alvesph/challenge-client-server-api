@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -25,13 +24,18 @@ func main() {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Fatalf("Error when making the request %v\n", err)
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Fatalf("Request client timed out: %v\n", err)
+		} else {
+			log.Fatalf("Error reading response: %v\n", err)
+		}
+		return
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("Error: %v\n", resp.Status)
+		log.Fatalf("Errorxx: %v\n", resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -45,5 +49,5 @@ func main() {
 		log.Fatalf("Error unmarshalling response body: %v\n", err)
 	}
 
-	fmt.Println("Dólar: ", data.Bid)
+	log.Println("Dólar: ", data.Bid)
 }
