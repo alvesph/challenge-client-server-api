@@ -29,6 +29,7 @@ var db *gorm.DB
 
 func main() {
 	initDatabase()
+	log.Println("Database started!")
 	http.HandleFunc("/cotacao", handler)
 	log.Println("Server is starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -44,9 +45,21 @@ func initDatabase() {
 }
 
 func saveToDatabase(cotation Cotation) {
-	if err := db.Create(&cotation).Error; err != nil {
-		log.Printf("Error saving to database: %v\n", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+
+	if err := db.WithContext(ctx).Create(&cotation).Error; err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("Timeout saving to database: %v\n", err)
+		} else {
+			log.Printf("Error saving to database: %v\n", err)
+		}
 	}
+
+	duration := time.Since(start)
+	log.Printf("Saved to database: %v\n", duration)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +86,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -99,10 +113,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	saveToDatabase(data.Usdbrl)
-
 	duration := time.Since(start)
 	log.Printf("Request took %v\n", duration)
+
+	saveToDatabase(data.Usdbrl)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data.Usdbrl)
