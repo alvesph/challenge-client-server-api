@@ -1,5 +1,12 @@
 # [**_FullCycle_**] Desafio - Client-Server-API
 
+## Como Rodar
+
+```
+docker compose up --build
+go run client/client.go
+```
+
 ## Problema
 Você precisará nos entregar dois sistemas em Go:
 - client.go

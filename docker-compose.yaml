@@ -7,3 +7,17 @@ services:
     volumes:
       - ./data:/root/db
     entrypoint: [ "sh", "-c", "sqlite3 /root/db/cotacao.db '.databases'" ]
+
+  server:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    container_name: server
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["go", "run", "server/server.go"]
+    depends_on:
+      - sqlite
