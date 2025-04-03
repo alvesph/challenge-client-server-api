@@ -14,6 +14,6 @@ Você precisará nos entregar dois sistemas em Go:
   - [X] o timeout máximo para chamar a API de cotação do dólar deverá ser de 200ms e;
   - [X] o timeout máximo para conseguir persistir os dados no banco deverá ser de 10ms.
 - [X] Os 3 contextos _deverão retornar erro nos logs_ caso o tempo de execução seja insuficiente.
-- [] O `client.go` terá que salvar a cotação atual em um arquivo "cotacao.txt" no formato: Dólar: {valor}
+- [X] O `client.go` terá que salvar a cotação atual em um arquivo "cotacao.txt" no formato: Dólar: {valor}
  
 **O endpoint necessário gerado pelo `server.go` para este desafio será: /cotacao e a porta a ser utilizada pelo servidor HTTP será a 8080.**
