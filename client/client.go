@@ -56,7 +56,7 @@ func main() {
 
 	content := "Dólar: " + data.Bid
 
-	err = os.WriteFile("cotacao.txt", []byte(content), 0644)
+	err = os.WriteFile("./file/cotacao.txt", []byte(content), 0644)
 	if err != nil {
 		log.Printf("Error writing response: %v\n", err)
 		return
