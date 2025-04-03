@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -19,15 +20,16 @@ func main() {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8080/cotacao", nil)
 	if err != nil {
-		log.Fatalf("Error when creating the request %v\n", err)
+		log.Printf("Error when creating the request %v\n", err)
+		return
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			log.Fatalf("Request client timed out: %v\n", err)
+			log.Printf("Request client timed out: %v\n", err)
 		} else {
-			log.Fatalf("Error reading response: %v\n", err)
+			log.Printf("Error reading response: %v\n", err)
 		}
 		return
 	}
@@ -35,19 +37,30 @@ func main() {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("Errorxx: %v\n", resp.Status)
+		log.Printf("Error: %v\n", resp.Status)
+		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("Error reading response body: %v\n", err)
+		log.Printf("Error reading response body: %v\n", err)
+		return
 	}
 
 	var data Cotation
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		log.Fatalf("Error unmarshalling response body: %v\n", err)
+		log.Printf("Error unmarshalling response body: %v\n", err)
+		return
 	}
 
-	log.Println("Dólar: ", data.Bid)
+	content := "Dólar: " + data.Bid
+
+	err = os.WriteFile("cotacao.txt", []byte(content), 0644)
+	if err != nil {
+		log.Printf("Error writing response: %v\n", err)
+		return
+	}
+
+	log.Println("Quotation saved successfully in the file cotacao.txt!")
 }
